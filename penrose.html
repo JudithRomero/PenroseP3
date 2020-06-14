@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Penrose P3</title>
+  <style>
+    body {
+      padding: 0;
+    }
+
+    #plane {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="plane"></canvas>
+  <script>
+    var canvas = document.getElementById('plane')
+    var ctx = canvas.getContext('2d')
+    var GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2
+    var RED = true
+    var BLUE = false
+
+    function resizeCanvas() {
+      canvas.width = canvas.clientWidth
+      canvas.height = canvas.clientHeight
+    }
+
+    function drawPoly(color, points, shouldStroke) {
+      ctx.fillStyle = color
+      ctx.strokeStyle = color
+      ctx.beginPath()
+      var x = points[0][0]
+      var y = points[0][1]
+      ctx.moveTo(x, y)
+      for (var i = 1; i < points.length; i++) {
+        x = points[i][0]
+        y = points[i][1]
+        ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+      if (shouldStroke) ctx.stroke()
+      else ctx.fill()
+    }
+
+    function subdivideRed(triangle, output) {
+      var a = triangle[1]
+      var b = triangle[2]
+      var c = triangle[3]
+      var p = [a[0] + (b[0] - a[0]) / GOLDEN_RATIO, a[1] + (b[1] - a[1]) / GOLDEN_RATIO]
+      output.push([RED, c, p, b], [BLUE, p, c, a])
+    }
+
+    function subdivideBlue(triangle, output) {
+      var a = triangle[1]
+      var b = triangle[2]
+      var c = triangle[3]
+      var q = [b[0] + (a[0] - b[0]) / GOLDEN_RATIO, b[1] + (a[1] - b[1]) / GOLDEN_RATIO]
+      var r = [b[0] + (c[0] - b[0]) / GOLDEN_RATIO, b[1] + (c[1] - b[1]) / GOLDEN_RATIO]
+      output.push([BLUE, r, c, a], [BLUE, q, r, b], [RED, r, q, a])
+    }
+
+    function subdivide(triangles) {
+      var result = []
+      for (var i = 0; i < triangles.length; i++) {
+        var t = triangles[i]
+        if (t[0] === BLUE) subdivideBlue(t, result)
+        else subdivideRed(t, result)
+      }
+      return result
+    }
+
+    function shuffleArray(array) {
+      for (var i = array.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1))
+          var temp = array[i]
+          array[i] = array[j]
+          array[j] = temp
+      }
+    }
+
+    function drawPenrose(triangles, depth) {
+      var len = Math.abs(triangles[0][1][0] - triangles[0][1][1])
+      ctx.lineJoin = 'bevel'
+      ctx.lineWidth = depth ? len / 200 : 1e-2
+      var red = '#' + Math.floor(0x111111 + Math.random() * 0xeeeeee).toString(16)
+      var blue = '#' + Math.floor(0x111111 + Math.random() * 0xeeeeee).toString(16)
+      shuffleArray(triangles)
+      for (var i = 0; i < triangles.length; i++) {
+        var triangle = triangles[i]
+        drawPoly(triangle[0] === RED ? red : blue, triangle.slice(1), true)
+      }
+      if (!depth) return
+      for (var i = 0; i < triangles.length; i++) {
+        var triangle = triangles[i]
+        drawPoly(triangle[0] === RED ? red : blue, triangle.slice(1), false)
+      }
+    }
+
+    function generatePenrose(initialTriangles, depth) {
+      var triangles = initialTriangles
+      for (var i = 0; i < depth; i++) {
+        triangles = subdivide(triangles)
+      }
+      drawPenrose(triangles, depth)
+      return triangles
+    }
+
+    function main() {
+      var depth = Math.round(Math.random() * 8)
+      console.log('Going to generate penrose tiling with depth ' + depth)
+      var initialTriangles = []
+      for (var i = 0; i < 10; i++) {
+        var bphi = (2 * i - 1) * Math.PI / 10
+        var cphi = (2 * i + 1) * Math.PI / 10
+        var b = [Math.cos(bphi), Math.sin(bphi)]
+        var c = [Math.cos(cphi), Math.sin(cphi)]
+        if (i % 2 == 0) initialTriangles.push([RED, [0, 0], c, b])
+        else initialTriangles.push([RED, [0, 0], b, c])
+      }
+      resizeCanvas()
+      var cx = canvas.clientWidth / 2
+      var cy = canvas.clientHeight / 2
+      var wheelRadius = 1.05 * Math.sqrt(cx * cx + cy * cy)
+      ctx.translate(cx, cy)
+      ctx.scale(wheelRadius, wheelRadius)
+      var tiling = generatePenrose(initialTriangles, depth)
+      console.log('Triangles: ' + tiling.length)
+    }
+
+    main()
+  </script>
+</body>
+</html>
